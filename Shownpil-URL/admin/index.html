@@ -1,0 +1,864 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>관리자 페이지</title>
+
+    <link
+        rel="stylesheet"
+        href="/admin/style.css"
+    >
+
+</head>
+
+
+<body>
+
+
+    <button
+        class="logout-button"
+        onclick="location.href='/logout'"
+    >
+        로그아웃
+    </button>
+
+
+    <p class="welcome">
+        관리자님 환영합니다!
+    </p>
+
+
+    <h2>
+        사용자 관리
+    </h2>
+
+
+    <div class="search">
+
+        <input
+            id="search"
+            type="text"
+            placeholder="사용자 ID 검색..."
+            oninput="loadUsers()"
+        >
+
+        <button
+            type="button"
+            onclick="loadUsers()"
+        >
+            검색
+        </button>
+
+    </div>
+
+
+    <button
+        type="button"
+        class="add-button"
+        onclick="openAddModal()"
+    >
+        사용자 등록
+    </button>
+
+
+    <table>
+
+        <thead>
+
+            <tr>
+
+                <th>ID</th>
+                <th>이름 / 닉네임</th>
+                <th>상태</th>
+                <th>관리</th>
+
+            </tr>
+
+        </thead>
+
+
+        <tbody id="user-list">
+        </tbody>
+
+    </table>
+
+
+    <!-- 사용자 등록 / 수정 -->
+
+    <div
+        id="userModal"
+        class="modal"
+    >
+
+        <div class="modal-box">
+
+            <div class="modal-header">
+
+                <h2 id="userModalTitle">
+                    사용자 등록
+                </h2>
+
+                <p>
+                    사용자 정보를 입력해주세요.
+                </p>
+
+            </div>
+
+
+            <label>
+                사용자 ID
+            </label>
+
+            <input
+                id="user-id"
+                type="text"
+                placeholder="사용자 ID"
+            >
+
+
+            <div id="password-area">
+
+                <label>
+                    비밀번호
+                </label>
+
+                <input
+                    id="user-password"
+                    type="password"
+                    placeholder="비밀번호"
+                >
+
+            </div>
+
+
+            <label>
+                이름 / 닉네임
+                <span>(선택)</span>
+            </label>
+
+            <input
+                id="user-name"
+                type="text"
+                placeholder="이름 또는 닉네임"
+            >
+
+
+            <button
+                type="button"
+                class="save-button"
+                onclick="saveUser()"
+            >
+                저장
+            </button>
+
+
+            <button
+                type="button"
+                class="cancel-button"
+                onclick="closeUserModal()"
+            >
+                취소
+            </button>
+
+        </div>
+
+    </div>
+
+
+    <!-- 비밀번호 변경 -->
+
+    <div
+        id="passwordModal"
+        class="modal"
+    >
+
+        <div class="modal-box">
+
+            <div class="modal-header">
+
+                <h2>
+                    비밀번호 변경
+                </h2>
+
+                <p id="password-user-name">
+                </p>
+
+            </div>
+
+
+            <label>
+                새 비밀번호
+            </label>
+
+            <input
+                id="new-password"
+                type="password"
+                placeholder="새 비밀번호"
+            >
+
+
+            <button
+                type="button"
+                class="save-button"
+                onclick="savePassword()"
+            >
+                변경
+            </button>
+
+
+            <button
+                type="button"
+                class="cancel-button"
+                onclick="closePasswordModal()"
+            >
+                취소
+            </button>
+
+        </div>
+
+    </div>
+
+
+    <script>
+
+        let users = [];
+
+        let editingId = null;
+
+        let passwordUserId = null;
+
+
+        /* 서버 요청 */
+
+        async function apiFetch(
+            url,
+            options = {}
+        ) {
+
+            const response =
+                await fetch(
+                    url,
+                    {
+                        ...options,
+                        credentials: "same-origin",
+                        headers: {
+                            ...(options.headers || {}),
+                            "Content-Type":
+                                "application/json"
+                        }
+                    }
+                );
+
+
+            if (
+                response.status === 401 ||
+                response.status === 403
+            ) {
+
+                window.location.href = "/";
+
+                return null;
+
+            }
+
+
+            return response;
+
+        }
+
+
+        /* 사용자 목록 */
+
+        async function loadUsers() {
+
+            try {
+
+                const response =
+                    await apiFetch("/users");
+
+
+                if (!response) {
+                    return;
+                }
+
+
+                const data =
+                    await response.json();
+
+
+                if (!response.ok) {
+
+                    alert(
+                        data.error ||
+                        "사용자 목록을 불러오지 못했습니다."
+                    );
+
+                    return;
+
+                }
+
+
+                users = data;
+
+
+                const keyword =
+                    document
+                        .getElementById("search")
+                        .value
+                        .trim()
+                        .toLowerCase();
+
+
+                const filtered =
+                    users.filter(user =>
+                        user.user_id
+                            .toLowerCase()
+                            .includes(keyword)
+                    );
+
+
+                document
+                    .getElementById("user-list")
+                    .innerHTML =
+
+                    filtered.map(user => `
+
+                        <tr>
+
+                            <td>
+                                ${user.user_id}
+                            </td>
+
+                            <td>
+                                ${user.name || "-"}
+                            </td>
+
+                            <td>
+                                <span class="${
+                                    user.active
+                                        ? "active"
+                                        : "inactive"
+                                }">
+                                    ${
+                                        user.active
+                                            ? "활성"
+                                            : "비활성"
+                                    }
+                                </span>
+                            </td>
+
+                            <td>
+
+                                <button
+                                    onclick="editUser('${user.id}')"
+                                >
+                                    수정
+                                </button>
+
+                                <button
+                                    onclick="openPasswordModal('${user.id}', '${user.user_id}')"
+                                >
+                                    비밀번호
+                                </button>
+
+                                <button
+                                    onclick="toggleUser('${user.id}', ${user.active})"
+                                >
+                                    ${
+                                        user.active
+                                            ? "비활성화"
+                                            : "활성화"
+                                    }
+                                </button>
+
+                                <button
+                                    onclick="deleteUser('${user.id}', '${user.user_id}')"
+                                >
+                                    삭제
+                                </button>
+
+                            </td>
+
+                        </tr>
+
+                    `).join("");
+
+            }
+
+            catch (error) {
+
+                console.error(error);
+
+                alert(
+                    "서버에 연결할 수 없습니다."
+                );
+
+            }
+
+        }
+
+
+        /* 등록 모달 */
+
+        function openAddModal() {
+
+            editingId = null;
+
+
+            document.getElementById(
+                "userModalTitle"
+            ).textContent =
+                "사용자 등록";
+
+
+            document.getElementById(
+                "user-id"
+            ).value = "";
+
+
+            document.getElementById(
+                "user-id"
+            ).disabled = false;
+
+
+            document.getElementById(
+                "user-password"
+            ).value = "";
+
+
+            document.getElementById(
+                "user-name"
+            ).value = "";
+
+
+            document.getElementById(
+                "password-area"
+            ).style.display =
+                "block";
+
+
+            document.getElementById(
+                "userModal"
+            ).style.display =
+                "flex";
+
+        }
+
+
+        /* 수정 */
+
+        function editUser(id) {
+
+            const user =
+                users.find(
+                    item => item.id === id
+                );
+
+
+            if (!user) {
+                return;
+            }
+
+
+            editingId = id;
+
+
+            document.getElementById(
+                "userModalTitle"
+            ).textContent =
+                "사용자 정보 수정";
+
+
+            document.getElementById(
+                "user-id"
+            ).value =
+                user.user_id;
+
+
+            document.getElementById(
+                "user-id"
+            ).disabled =
+                true;
+
+
+            document.getElementById(
+                "user-name"
+            ).value =
+                user.name || "";
+
+
+            document.getElementById(
+                "password-area"
+            ).style.display =
+                "none";
+
+
+            document.getElementById(
+                "userModal"
+            ).style.display =
+                "flex";
+
+        }
+
+
+        /* 등록 / 수정 */
+
+        async function saveUser() {
+
+            const userId =
+                document
+                    .getElementById("user-id")
+                    .value
+                    .trim();
+
+
+            const password =
+                document
+                    .getElementById("user-password")
+                    .value;
+
+
+            const name =
+                document
+                    .getElementById("user-name")
+                    .value
+                    .trim();
+
+
+            let url;
+
+            let body;
+
+
+            if (editingId) {
+
+                url =
+                    "/update-user";
+
+                body = {
+                    id: editingId,
+                    name: name
+                };
+
+            }
+            else {
+
+                if (!userId || !password) {
+
+                    alert(
+                        "사용자 ID와 비밀번호를 입력해주세요."
+                    );
+
+                    return;
+
+                }
+
+
+                url =
+                    "/create-user";
+
+                body = {
+                    userId,
+                    password,
+                    name
+                };
+
+            }
+
+
+            const response =
+                await apiFetch(
+                    url,
+                    {
+                        method: "POST",
+                        body:
+                            JSON.stringify(body)
+                    }
+                );
+
+
+            if (!response) {
+                return;
+            }
+
+
+            const result =
+                await response.json();
+
+
+            if (!response.ok) {
+
+                alert(
+                    result.error ||
+                    "저장에 실패했습니다."
+                );
+
+                return;
+
+            }
+
+
+            alert(
+                editingId
+                    ? "사용자 정보가 수정되었습니다."
+                    : "사용자가 등록되었습니다."
+            );
+
+
+            closeUserModal();
+
+            loadUsers();
+
+        }
+
+
+        function closeUserModal() {
+
+            document.getElementById(
+                "userModal"
+            ).style.display =
+                "none";
+
+        }
+
+
+        /* 비밀번호 */
+
+        function openPasswordModal(
+            id,
+            userId
+        ) {
+
+            passwordUserId = id;
+
+
+            document.getElementById(
+                "password-user-name"
+            ).textContent =
+                userId;
+
+
+            document.getElementById(
+                "new-password"
+            ).value = "";
+
+
+            document.getElementById(
+                "passwordModal"
+            ).style.display =
+                "flex";
+
+        }
+
+
+        async function savePassword() {
+
+            const password =
+                document
+                    .getElementById("new-password")
+                    .value;
+
+
+            if (!password) {
+
+                alert(
+                    "새 비밀번호를 입력해주세요."
+                );
+
+                return;
+
+            }
+
+
+            const response =
+                await apiFetch(
+                    "/change-password",
+                    {
+                        method: "POST",
+                        body:
+                            JSON.stringify({
+                                id:
+                                    passwordUserId,
+                                password
+                            })
+                    }
+                );
+
+
+            if (!response) {
+                return;
+            }
+
+
+            const result =
+                await response.json();
+
+
+            if (!response.ok) {
+
+                alert(
+                    result.error ||
+                    "비밀번호 변경에 실패했습니다."
+                );
+
+                return;
+
+            }
+
+
+            alert(
+                "비밀번호가 변경되었습니다."
+            );
+
+
+            closePasswordModal();
+
+        }
+
+
+        function closePasswordModal() {
+
+            document.getElementById(
+                "passwordModal"
+            ).style.display =
+                "none";
+
+        }
+
+
+        /* 활성 / 비활성 */
+
+        async function toggleUser(
+            id,
+            active
+        ) {
+
+            if (
+                !confirm(
+                    active
+                        ? "이 사용자를 비활성화하시겠습니까?"
+                        : "이 사용자를 활성화하시겠습니까?"
+                )
+            ) {
+                return;
+            }
+
+
+            const response =
+                await apiFetch(
+                    "/toggle-user",
+                    {
+                        method: "POST",
+                        body:
+                            JSON.stringify({
+                                id,
+                                active:
+                                    !active
+                            })
+                    }
+                );
+
+
+            if (!response) {
+                return;
+            }
+
+
+            const result =
+                await response.json();
+
+
+            if (!response.ok) {
+
+                alert(
+                    result.error ||
+                    "상태 변경에 실패했습니다."
+                );
+
+                return;
+
+            }
+
+
+            loadUsers();
+
+        }
+
+
+        /* 삭제 */
+
+        async function deleteUser(
+            id,
+            userId
+        ) {
+
+            if (
+                !confirm(
+                    `"${userId}" 사용자를 삭제하시겠습니까?`
+                )
+            ) {
+                return;
+            }
+
+
+            const response =
+                await apiFetch(
+                    "/delete-user",
+                    {
+                        method: "POST",
+                        body:
+                            JSON.stringify({
+                                id
+                            })
+                    }
+                );
+
+
+            if (!response) {
+                return;
+            }
+
+
+            const result =
+                await response.json();
+
+
+            if (!response.ok) {
+
+                alert(
+                    result.error ||
+                    "삭제에 실패했습니다."
+                );
+
+                return;
+
+            }
+
+
+            alert(
+                "사용자가 삭제되었습니다."
+            );
+
+
+            loadUsers();
+
+        }
+
+
+        /* 시작 */
+
+        loadUsers();
+
+    </script>
+
+</body>
+
+</html>

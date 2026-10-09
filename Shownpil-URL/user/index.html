@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>URL 변환</title>
+
+    <link rel="stylesheet" href="/user/style.css">
+</head>
+
+<body>
+
+    <div class="container">
+
+        <h1>URL 변환</h1>
+
+        <p>변환할 URL을 입력하세요.</p>
+
+        <input
+            type="text"
+            id="url"
+            placeholder="https://example.com"
+        >
+
+        <button onclick="convertUrl()">
+            변환하기
+        </button>
+
+        <div id="result"></div>
+
+        <button onclick="logout()">
+            로그아웃
+        </button>
+
+    </div>
+
+
+        <script>
+        async function convertUrl() {
+            const urlInput = document.getElementById("url");
+            const result = document.getElementById("result");
+
+            const url = urlInput.value.trim();
+
+            if (!url) {
+                result.textContent = "URL을 입력해주세요.";
+                return;
+            }
+
+            result.textContent = "변환 중...";
+
+            try {
+                const response = await fetch("/api/convert-url", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        url: url
+                    })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    result.textContent =
+                        data.error || "URL 변환에 실패했습니다.";
+                    return;
+                }
+
+                result.innerHTML = `
+                    <p>변환 완료!</p>
+
+                    <a href="${data.shortUrl}" target="_blank">
+                        ${data.shortUrl}
+                    </a>
+
+                    <br><br>
+
+                    <button type="button"
+                            onclick="copyShortUrl('${data.shortUrl}')">
+                        URL 복사
+                    </button>
+                `;
+
+            } catch (error) {
+                console.error("CONVERT ERROR:", error);
+
+                result.textContent =
+                    "서버와 통신할 수 없습니다.";
+            }
+        }
+
+
+        async function copyShortUrl(shortUrl) {
+            try {
+
+                // 최신 Clipboard API
+                if (navigator.clipboard && window.isSecureContext) {
+
+                    await navigator.clipboard.writeText(shortUrl);
+
+                    alert("짧은 URL이 복사되었습니다.");
+
+                    return;
+                }
+
+
+                // Clipboard API를 사용할 수 없는 경우
+                const textarea = document.createElement("textarea");
+
+                textarea.value = shortUrl;
+
+                textarea.style.position = "fixed";
+                textarea.style.left = "-9999px";
+                textarea.style.top = "0";
+
+                document.body.appendChild(textarea);
+
+                textarea.focus();
+                textarea.select();
+
+                const success =
+                    document.execCommand("copy");
+
+                document.body.removeChild(textarea);
+
+
+                if (success) {
+
+                    alert("짧은 URL이 복사되었습니다.");
+
+                } else {
+
+                    alert("URL 복사에 실패했습니다.");
+
+                }
+
+            } catch (error) {
+
+                console.error("COPY ERROR:", error);
+
+                alert("URL 복사에 실패했습니다.");
+
+            }
+        }
+
+
+        function logout() {
+            location.href = "/logout";
+        }
+    </script>
+
+</body>
+
+</html>

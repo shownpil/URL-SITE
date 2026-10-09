@@ -1,0 +1,64 @@
+body {
+    margin: 0;
+    background: #f1f2f4;
+    font-family: Arial, sans-serif;
+}
+
+h2 {
+    text-align: center;
+    margin-top: 100px;
+    color: #12344d;
+}
+
+label {
+    display: block;
+    width: 440px;
+    margin: 30px auto 10px;
+    color: #12344d;
+    font-weight: bold;
+}
+
+input {
+    display: block;
+    width: 440px;
+    height: 80px;
+    margin: 0 auto;
+
+    border: none;
+    outline: none;
+    border-radius: 45px;
+
+    padding: 0 45px;
+    box-sizing: border-box;
+
+    background: white;
+
+    font-size: 16px;
+
+    box-shadow:
+        0 8px 0 #dfe2e5,
+        0 15px 30px rgba(50, 70, 90, 0.12);
+}
+
+input::placeholder {
+    color: #999;
+}
+.login-button {
+    display: block;
+    width: 440px;
+    height: 66px;
+    margin: 38px auto 0;
+
+    border: none;
+    border-radius: 40px;
+
+    background: #ed2024;
+    color: white;
+
+    font-size: 17px;
+    font-weight: bold;
+
+    cursor: pointer;
+
+    box-shadow: 0 8px 10px rgba(200, 40, 40, 0.3);
+}
